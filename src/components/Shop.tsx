@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { usePlayer } from "@/hooks/usePlayer";
+import { useOnChainShop } from "@/hooks/useOnChainShop";
 import { RARITY_STYLES, type ShopKind } from "@/lib/shopItems";
 
 const TABS: { id: ShopKind; label: string; icon: string }[] = [
@@ -9,9 +10,18 @@ const TABS: { id: ShopKind; label: string; icon: string }[] = [
   { id: "toy", label: "Mainan", icon: "🧶" },
 ];
 
+// Map Supabase item IDs to on-chain item IDs
+const ON_CHAIN_MAP: Record<string, number> = {
+  fish: 1, milk: 2, sushi: 3, cookie: 4, shrimp: 5, treat: 6,
+  hat: 13, scarf: 12, crown: 11, ribbon: 10, glasses: 14, pumpkin: 13,
+  yarn: 21, yoyo: 20, lure: 24,
+};
+
 export function Shop({ onClose }: { onClose: () => void }) {
   const { authenticated, coins, shopItems, buyItem, login } = usePlayer();
+  const { buyItem: buyOnChain, loading: chainLoading } = useOnChainShop();
   const [tab, setTab] = useState<ShopKind>("food");
+  const [chainItems, setChainItems] = useState<any[]>([]);
   const items = shopItems.filter((i) => i.kind === tab);
 
   return (
@@ -91,6 +101,7 @@ export function Shop({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {items.map((item) => {
                 const cantAfford = coins < item.price;
+                const chainId = ON_CHAIN_MAP[item.id];
                 return (
                   <div
                     key={item.id}
@@ -106,6 +117,8 @@ export function Shop({ onClose }: { onClose: () => void }) {
                       {item.effect.affection ? `+${item.effect.affection} 💖` : ""}
                       {item.kind === "accessory" ? "kosmetik" : ""}
                     </div>
+
+                    {/* Coins buy */}
                     <button
                       disabled={cantAfford}
                       onClick={async () => {
@@ -116,11 +129,38 @@ export function Shop({ onClose }: { onClose: () => void }) {
                           toast.error((e as Error).message);
                         }
                       }}
-                      className="mt-2.5 flex w-full items-center justify-center gap-1 rounded-full bg-primary px-2 py-1.5 text-xs font-bold text-primary-foreground shadow-sm transition hover:brightness-110 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-full bg-primary px-2 py-1.5 text-xs font-bold text-primary-foreground shadow-sm transition hover:brightness-110 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
                     >
                       <span aria-hidden>🪙</span>
                       <span className="font-display tabular-nums">{item.price}</span>
                     </button>
+
+                    {/* On-chain buy with RITUAL */}
+                    {chainId && (
+                      <button
+                        disabled={chainLoading}
+                        onClick={async () => {
+                          try {
+                            const priceWei = BigInt(
+                              Math.round(
+                                { fish: 0.001, milk: 0.0005, sushi: 0.002, cookie: 0.0008, shrimp: 0.0015, treat: 0.003,
+                                  ribbon: 0.005, crown: 0.05, scarf: 0.003, hat: 0.01, glasses: 0.008,
+                                  yarn: 0.001, yoyo: 0.002, lure: 0.005,
+                                  pumpkin: 0.01, bowtie: 0.008 }[item.id] * 1e18
+                              ).toString()
+                            );
+                            const hash = await buyOnChain(chainId, 1, priceWei);
+                            toast.success(`On-chain: ${item.emoji} ${item.name}`);
+                          } catch (e) {
+                            toast.error((e as Error).message);
+                          }
+                        }}
+                        className="mt-1 flex w-full items-center justify-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-2 py-1 text-[10px] font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                      >
+                        <span aria-hidden>⛓️</span>
+                        <span className="font-display">RITUAL</span>
+                      </button>
+                    )}
                   </div>
                 );
               })}
