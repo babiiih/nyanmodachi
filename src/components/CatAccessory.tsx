@@ -1,12 +1,12 @@
 import type { Stage } from "@/lib/evolution";
-import knotLogo from "@/assets/knot-logo.png.asset.json";
+import knotLogoUrl from "@/assets/knot-logo.png";
 
 /** Overlays for a cat sprite: accessory emoji, aura glow, sparkle particles. */
 export function CatAccessory({ stage, sleeping }: { stage: Stage; sleeping: boolean }) {
   return (
     <>
       <img
-        src={knotLogo.url}
+        src={knotLogoUrl}
         alt=""
         aria-hidden
         className="pointer-events-none absolute left-1/2 -translate-x-1/2 select-none"

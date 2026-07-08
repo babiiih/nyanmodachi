@@ -5,7 +5,7 @@ import mikoUrl from "@/assets/cat-miko.png";
 import soraUrl from "@/assets/cat-sora.png";
 import hanaUrl from "@/assets/cat-hana.png";
 import yukiUrl from "@/assets/cat-yuki.png";
-import roomBgAsset from "@/assets/room-bg.png.asset.json";
+import roomBgUrl from "@/assets/room-bg.png";
 import { useCatStatuses } from "@/hooks/useCatStatuses";
 import { CatStatusPanel } from "@/components/CatStatusPanel";
 import { HeartParticles } from "@/components/HeartParticles";
@@ -213,7 +213,7 @@ export function CatRoom() {
       className="relative w-full h-[100dvh] overflow-hidden"
       style={{
         backgroundColor: "#000",
-        backgroundImage: `url(${roomBgAsset.url})`,
+        backgroundImage: `url(${roomBgUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
