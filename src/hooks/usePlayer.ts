@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { ShopItem, ShopKind } from "@/lib/shopItems";
+import { useOnChainInventory } from "./useOnChainInventory";
 
 export type InventoryRow = {
   item_id: string;
@@ -12,6 +13,7 @@ export function usePlayer() {
   const { ready, authenticated, login, logout, user } = usePrivy();
   const { wallets } = useWallets();
   const wallet = (wallets[0]?.address ?? user?.wallet?.address ?? "").toLowerCase();
+  const { items: onChainItems, refresh: refreshOnChain } = useOnChainInventory();
 
   const [coins, setCoins] = useState<number>(0);
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
@@ -130,8 +132,28 @@ export function usePlayer() {
     [wallet, coins],
   );
 
+  // Map on-chain item IDs to Supabase item IDs
+  const CHAIN_TO_SUPABASE: Record<number, string> = {
+    1: "fish", 2: "milk", 3: "sushi", 4: "cookie", 5: "shrimp", 6: "treat",
+    10: "ribbon", 11: "crown", 12: "scarf", 13: "hat", 14: "glasses",
+    20: "yarn", 21: "yarn", 22: "yarn", 23: "feather", 24: "laser",
+  };
+
+  // Merge Supabase inventory + on-chain inventory
+  const mergedInventory: InventoryRow[] = [...inventory];
+  for (const oci of onChainItems) {
+    const sbId = CHAIN_TO_SUPABASE[oci.itemId];
+    if (!sbId) continue;
+    const existing = mergedInventory.find((i) => i.item_id === sbId);
+    if (existing) {
+      existing.quantity += oci.quantity;
+    } else {
+      mergedInventory.push({ item_id: sbId, quantity: oci.quantity });
+    }
+  }
+
   const inventoryByKind = (kind: ShopKind) =>
-    inventory
+    mergedInventory
       .filter((i) => i.quantity > 0)
       .map((i) => ({
         row: i,
@@ -144,7 +166,7 @@ export function usePlayer() {
     authenticated,
     wallet,
     coins,
-    inventory,
+    inventory: mergedInventory,
     shopItems,
     loading,
     login,
@@ -153,5 +175,6 @@ export function usePlayer() {
     consumeItem,
     earnCoins,
     inventoryByKind,
+    refreshOnChain,
   };
 }

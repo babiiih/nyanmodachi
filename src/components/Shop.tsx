@@ -18,7 +18,7 @@ const ON_CHAIN_MAP: Record<string, number> = {
 };
 
 export function Shop({ onClose }: { onClose: () => void }) {
-  const { authenticated, coins, shopItems, buyItem, login } = usePlayer();
+  const { authenticated, coins, shopItems, buyItem, login, inventory, refreshOnChain } = usePlayer();
   const { buyItem: buyOnChain, loading: chainLoading } = useOnChainShop();
   const [tab, setTab] = useState<ShopKind>("food");
   const [chainItems, setChainItems] = useState<any[]>([]);
@@ -108,6 +108,15 @@ export function Shop({ onClose }: { onClose: () => void }) {
                     className={`flex flex-col items-center rounded-2xl border border-border bg-card p-3 text-center shadow-sm ring-1 ${RARITY_STYLES[item.rarity]}`}
                   >
                     <div className="text-4xl leading-none">{item.emoji}</div>
+                    {/* Show owned count */}
+                    {(() => {
+                      const owned = inventory.find((inv) => inv.item_id === item.id);
+                      return owned && owned.quantity > 0 ? (
+                        <div className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-green-600 px-1 text-[10px] font-bold text-white">
+                          {owned.quantity}
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="mt-2 text-xs font-semibold text-foreground">
                       {item.name}
                     </div>
@@ -151,6 +160,7 @@ export function Shop({ onClose }: { onClose: () => void }) {
                             );
                             const hash = await buyOnChain(chainId, 1, priceWei);
                             toast.success(`On-chain: ${item.emoji} ${item.name}`);
+                            await refreshOnChain();
                           } catch (e) {
                             toast.error((e as Error).message);
                           }
