@@ -15,6 +15,7 @@ import { WalletButton } from "@/components/WalletButton";
 import { CoinBadge } from "@/components/CoinBadge";
 import { Shop } from "@/components/Shop";
 import { usePlayer } from "@/hooks/usePlayer";
+import { useUnlockedCats } from "@/hooks/useUnlockedCats";
 import { playFeed, playPet, playAlert } from "@/lib/sounds";
 import { stageFor } from "@/lib/evolution";
 import { getFood, type FoodId } from "@/lib/foods";
@@ -57,8 +58,10 @@ export function CatRoom() {
   const statesRef = useRef<CatState[]>([]);
   const [ready, setReady] = useState(false);
   const { cats, feed, pet, isNight, toggleNight } = useCatStatuses();
-  const { earnCoins, authenticated } = usePlayer();
+  const { earnCoins, authenticated, coins } = usePlayer();
+  const { unlocked, lockedCats, buyCat, catCosts } = useUnlockedCats(coins, (n: number) => {});
   const [shopOpen, setShopOpen] = useState(false);
+  const [catShopOpen, setCatShopOpen] = useState(false);
   const isNightRef = useRef(isNight);
   useEffect(() => {
     isNightRef.current = isNight;
@@ -261,6 +264,16 @@ export function CatRoom() {
         >
           🛒
         </button>
+        {lockedCats.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setCatShopOpen(true)}
+            aria-label="Beli kucing baru"
+            className="pin pin-hover flex h-10 items-center gap-1 rounded-full px-3 text-sm"
+          >
+            🐱+
+          </button>
+        )}
         <button
           type="button"
           onClick={handleToggleNight}
@@ -273,7 +286,86 @@ export function CatRoom() {
 
       {shopOpen && <Shop onClose={() => setShopOpen(false)} />}
 
-      {CATS.map((cat, i) => {
+      {/* Cat Shop Modal */}
+      {catShopOpen && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+          style={{ background: "rgba(58, 46, 34, 0.55)", backdropFilter: "blur(4px)" }}
+          onClick={() => setCatShopOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm overflow-hidden rounded-3xl border border-accent/50 bg-card text-card-foreground shadow-2xl"
+          >
+            <div
+              className="flex items-center justify-between border-b border-border px-5 py-4"
+              style={{ background: "linear-gradient(180deg, oklch(0.94 0.014 82), oklch(0.90 0.018 82))" }}
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-2xl bg-primary/15 text-lg">🐱</span>
+                <div>
+                  <div className="font-display text-base font-bold uppercase tracking-wider text-foreground">Adopsi Kucing</div>
+                  <div className="text-[10px] text-muted-foreground">tambah teman baru untuk kucingmu</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setCatShopOpen(false)}
+                className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-sm text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 space-y-2">
+              {lockedCats.map((catId) => {
+                const cat = CATS.find((c) => c.id === catId);
+                const cost = catCosts[catId] ?? 0;
+                const canAfford = coins >= cost;
+                if (!cat) return null;
+
+                return (
+                  <div key={catId} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
+                    <img src={cat.url} alt={cat.name} className="h-12 w-12 rounded-full bg-accent/30 object-cover" draggable={false} />
+                    <div className="flex-1">
+                      <div className="text-sm font-bold text-foreground font-display">{cat.name}</div>
+                      <div className="text-[10px] text-muted-foreground">kucing baru siap diadopsi</div>
+                    </div>
+                    <button
+                      disabled={!canAfford || !authenticated}
+                      onClick={async () => {
+                        try {
+                          await buyCat(catId);
+                          toast.success(`🐱 ${cat.name} berhasil diadopsi!`);
+                        } catch (e) {
+                          toast.error((e as Error).message);
+                        }
+                      }}
+                      className="flex items-center gap-1 rounded-full bg-primary px-3 py-2 text-xs font-bold text-primary-foreground shadow-sm transition hover:brightness-110 disabled:bg-muted disabled:text-muted-foreground"
+                    >
+                      🪙 {cost}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {!authenticated && (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-2">Login dulu untuk adopsi kucing</p>
+                </div>
+              )}
+
+              {lockedCats.length === 0 && (
+                <div className="text-center py-4">
+                  <div className="text-3xl mb-2">🎉</div>
+                  <p className="text-sm text-muted-foreground">Semua kucing sudah diadopsi!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {CATS.filter((cat) => unlocked.includes(cat.id)).map((cat, i) => {
         const bounceKey = bounceTrigger[cat.id] ?? 0;
         const shakeKey = shakeTrigger[cat.id] ?? 0;
         const status = cats.find((c) => c.id === cat.id);
