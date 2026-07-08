@@ -1,0 +1,10 @@
+node_modules
+.output
+.nitro
+.wrangler
+*.local
+.env
+.env.*
+!.env.example
+dist
+.tanstack
